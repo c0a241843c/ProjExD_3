@@ -152,6 +152,25 @@ class Bomb:
         self.rct.move_ip(self.vx, self.vy)
         screen.blit(self.img, self.rct)
 
+class Explosion:
+    """
+    爆発エフェクトを扱うクラス
+    """
+    def __init__(self, center):
+        img0 = pg.image.load("fig/explosion.gif")
+        img1 = pg.transform.flip(img0, True, True)
+        self.imgs = [img0, img1]
+        self.rct = img0.get_rect(center=center)
+        self.life = 20
+
+    def update(self, screen):
+        """
+        爆発を画面に描画して、寿命を1減らす
+        """
+        if self.life > 0:
+            screen.blit(self.imgs[self.life % 2], self.rct)  # チカチカ交互表示
+            self.life -= 1
+
 
 def main():
     pg.display.set_caption("たたかえ！こうかとん")
@@ -163,9 +182,9 @@ def main():
     # for _ in range(NUM_OF_BOMBS):
     #     bombs.append(Bomb((255, 0, 0), 10))
     bombs = [Bomb((255, 0, 0), 10) for _ in range(NUM_OF_BOMBS)]
-    beams = [] #追加2
-    
     score = Score()  #追加1
+    beams = [] #追加2
+    explosions = [] #追加3
     clock = pg.time.Clock()
     tmr = 0
     while True:
@@ -199,6 +218,7 @@ def main():
             for j, bomb in enumerate(bombs):
                 if bomb is not None:
                     if beam.rct.colliderect(bomb.rct): #追加2
+                        explosions.append(Explosion(bomb.rct.center))
                         beams[i] = None
                         bombs[j] = None
                         score.score += 1
@@ -212,6 +232,10 @@ def main():
         
         for bomb in bombs:
            bomb.update(screen)
+
+        explosions = [e for e in explosions if e.life > 0]
+        for exp in explosions:
+            exp.update(screen)
 
         score.update(screen) #追加1
         pg.display.update()
