@@ -2,6 +2,7 @@ import os
 import random
 import sys
 import time
+import math
 import pygame as pg
 
 
@@ -68,6 +69,7 @@ class Bird:
         self.img = __class__.imgs[(+5, 0)]
         self.rct: pg.Rect = self.img.get_rect()
         self.rct.center = xy
+        self.dire = (+5, 0)
 
     def change_img(self, num: int, screen: pg.Surface):
         """
@@ -94,23 +96,23 @@ class Bird:
             self.rct.move_ip(-sum_mv[0], -sum_mv[1])
         if not (sum_mv[0] == 0 and sum_mv[1] == 0):
             self.img = __class__.imgs[tuple(sum_mv)]
+            self.dire = tuple(sum_mv)
         screen.blit(self.img, self.rct)
 
 
 class Beam:
-    """
-    こうかとんが放つビームに関するクラス
-    """
-    def __init__(self, bird:"Bird"):
-        """
-        ビーム画像Surfaceを生成する
-        引数 bird：ビームを放つこうかとん（Birdインスタンス）
-        """
-        self.img = pg.image.load("fig/beam.png")
+    def __init__(self, bird):
+        self.vx, self.vy = bird.dire
+        angle = math.degrees(math.atan2(-self.vy, self.vx))
+        self.img = pg.transform.rotozoom(pg.image.load("fig/beam.png"), angle, 1.0)
         self.rct = self.img.get_rect()
-        self.rct.centery = bird.rct.centery
-        self.rct.left = bird.rct.right  # ビームの左座標＝こうかとんの右座標
-        self.vx, self.vy = +5, 0
+        self.rct.centerx = bird.rct.centerx + bird.rct.width * self.vx // 5
+        self.rct.centery = bird.rct.centery + bird.rct.height * self.vy // 5
+
+    def update(self, screen):
+        self.rct.move_ip(self.vx, self.vy)
+        screen.blit(self.img, self.rct)
+
 
     def update(self, screen: pg.Surface):
         """
@@ -152,24 +154,16 @@ class Bomb:
         self.rct.move_ip(self.vx, self.vy)
         screen.blit(self.img, self.rct)
 
-class Explosion:
-    """
-    爆発エフェクトを扱うクラス
-    """
-    def __init__(self, center):
-        img0 = pg.image.load("fig/explosion.gif")
-        img1 = pg.transform.flip(img0, True, True)
-        self.imgs = [img0, img1]
-        self.rct = img0.get_rect(center=center)
-        self.life = 20
+class Explosion: #追加3
+    def __init__(self, bomb_rct):
+        img = pg.image.load("fig/explosion.gif")
+        self.imgs = [img, pg.transform.flip(img, True, False)]
+        self.rct = self.imgs[0].get_rect(center=bomb_rct.center)
+        self.life = 10
 
     def update(self, screen):
-        """
-        爆発を画面に描画して、寿命を1減らす
-        """
-        if self.life > 0:
-            screen.blit(self.imgs[self.life % 2], self.rct)  # チカチカ交互表示
-            self.life -= 1
+        self.life -= 1
+        screen.blit(self.imgs[self.life % 2], self.rct)
 
 
 def main():
@@ -182,9 +176,10 @@ def main():
     # for _ in range(NUM_OF_BOMBS):
     #     bombs.append(Bomb((255, 0, 0), 10))
     bombs = [Bomb((255, 0, 0), 10) for _ in range(NUM_OF_BOMBS)]
-    score = Score()  #追加1
     beams = [] #追加2
     explosions = [] #追加3
+    
+    score = Score()  #追加1
     clock = pg.time.Clock()
     tmr = 0
     while True:
@@ -218,7 +213,7 @@ def main():
             for j, bomb in enumerate(bombs):
                 if bomb is not None:
                     if beam.rct.colliderect(bomb.rct): #追加2
-                        explosions.append(Explosion(bomb.rct.center))
+                        explosions.append(Explosion(bomb.rct))#追加3
                         beams[i] = None
                         bombs[j] = None
                         score.score += 1
@@ -226,6 +221,7 @@ def main():
                 
         beams = [bomb for bomb in beams if bomb is not None and check_bound(bomb.rct)[0]]
         bombs = [bomb for bomb in bombs if bomb is not None]
+        explosions = [ex for ex in explosions if ex.life > 0] #追加3
 
         key_lst = pg.key.get_pressed()
         bird.update(key_lst, screen)
@@ -233,9 +229,8 @@ def main():
         for bomb in bombs:
            bomb.update(screen)
 
-        explosions = [e for e in explosions if e.life > 0]
-        for exp in explosions:
-            exp.update(screen)
+        for ex in explosions: #追加3
+            ex.update(screen)
 
         score.update(screen) #追加1
         pg.display.update()
