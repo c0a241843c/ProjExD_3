@@ -219,7 +219,7 @@ def main():
                         score.score += 1
                         bird.change_img(6, screen)
                 
-        beams = [bomb for bomb in beams if bomb is not None and check_bound(bomb.rct)[0]]
+        beams = [beam for beam in beams if beam is not None and check_bound(beam.rct)[0]]
         bombs = [bomb for bomb in bombs if bomb is not None]
         explosions = [ex for ex in explosions if ex.life > 0] #追加3
 
